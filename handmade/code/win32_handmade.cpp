@@ -1,5 +1,8 @@
+// INFO: Watch lectures by Chandler Carruth.
+
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 #define internal static
 #define local_persist static
@@ -30,6 +33,14 @@ struct win32_window_dimension
     int Width;
     int Height;
 };
+
+// Declare function type
+typedef DWORD WINAPI x_input_get_state(DWORD dwUserIndex, XINPUT_STATE* pState);
+typedef DWORD WINAPI x_input_set_state(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
+global_variable x_input_get_state *XInputGetState_;
+global_variable x_input_set_state *XInputSetState_;
+#define XInputGetState XInputGetState_;
+#define XInputSetState XInputSetState_;
 
 // Todo: This is a global for now.
 global_variable bool GlobalRunning;
@@ -125,8 +136,6 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WPara
         /*
         case WM_SIZE:
         {
-            //win32_window_dimension Dimension = Win32GetWindowDimension(Window);
-            //Win32ResizeDIBSection(&GlobalBackBuffer, Dimension.Width, Dimension.Height);
         } break;
         */
 
@@ -176,7 +185,7 @@ int CALLBACK WinMain (HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandL
     WNDCLASSA WindowClass = {}; // = {} to initialize everything to zero.
     Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
-    WindowClass.style = CS_HREDRAW|CS_VREDRAW;
+    WindowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
     WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = Instance;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
@@ -199,6 +208,10 @@ int CALLBACK WinMain (HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandL
 
         if(Window)
         {
+            // NOTE: Since we specified CS_OWNDC, we can just get one device context and use it forever
+            // since we aren't sharing it with anyone.
+            HDC DeviceContext = GetDC(Window);
+
             GlobalRunning = true;
             int XOffset = 0;
             int YOffset = 0;
@@ -217,12 +230,44 @@ int CALLBACK WinMain (HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandL
                     DispatchMessageA(&Message);
                 }
 
+                // TODO: Should we poll this more frequently?
+                for(DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ControllerIndex++)
+                {
+                    XINPUT_STATE ControllerState;
+                    if( XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                    {
+                        // NOTE: This controller is plugged in.
+                        // TODO: See if Controller.dwPacketNumber increments too rapidly.
+                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+
+                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+                        bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+                        bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+                        bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+                        bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+                        bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
+                        bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
+                        bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
+                        bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+
+                        int16 StickX = Pad->sThumbLX;
+                        int16 StickY = Pad->sThumbLY; 
+                    }
+                    else
+                    {
+                        // NOTE: This controller is not available.
+                    }
+                }
+
                 RenderWeirdGradient(GlobalBackBuffer, XOffset, YOffset);
-                HDC DeviceContext = GetDC(Window);
+                //HDC DeviceContext = GetDC(Window);
 
                 win32_window_dimension Dimemsion = Win32GetWindowDimension(Window);
                 Win32DisplayBufferInWindow(DeviceContext, Dimemsion.Width, Dimemsion.Height, GlobalBackBuffer, 0, 0, Dimemsion.Width, Dimemsion.Height);
-                ReleaseDC(Window, DeviceContext);
+                //ReleaseDC(Window, DeviceContext);
 
                 ++XOffset;
                 ++YOffset;
