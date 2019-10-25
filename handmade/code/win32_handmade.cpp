@@ -37,7 +37,6 @@ struct win32_window_dimension
 /* ====================================================================================================================
    XInput function pointers and loading
    ------------------------------------------------------------------------------------------------------------------*/
-
 // Declare macro for creating function prototype.
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
 #define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
@@ -57,8 +56,8 @@ X_INPUT_SET_STATE(XInputSetStateStub)
 }
 
 // Create global function pointers to the stub functions
-global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
-global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
+global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub; // & operator implied for functions.
+global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub; // & operator implied for functions.
 
 // Redefine function to use the function pointers.
 #define XInputGetState XInputGetState_
@@ -347,10 +346,8 @@ int CALLBACK WinMain (HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandL
                         int16 StickX = Pad->sThumbLX;
                         int16 StickY = Pad->sThumbLY;
 
-                        if(AButton)
-                        {
-                            ++YOffset;
-                        }
+                        XOffset += StickX >> 12;
+                        YOffset += StickY >> 12;
                     }
                     else
                     {
@@ -359,14 +356,9 @@ int CALLBACK WinMain (HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandL
                 }
 
                 RenderWeirdGradient(&GlobalBackBuffer, XOffset, YOffset);
-                //HDC DeviceContext = GetDC(Window);
 
                 win32_window_dimension Dimemsion = Win32GetWindowDimension(Window);
                 Win32DisplayBufferInWindow(&GlobalBackBuffer, DeviceContext, Dimemsion.Width, Dimemsion.Height);
-                //ReleaseDC(Window, DeviceContext);
-
-                ++XOffset;
-                //++YOffset;
 
 				XINPUT_VIBRATION Vibration;
 				Vibration.wLeftMotorSpeed = 60,000;
