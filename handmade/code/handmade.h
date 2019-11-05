@@ -1,6 +1,51 @@
 #if !defined(HANDMADE_H) // Include guard to avoid redeclaration
 
 /*
+HANDMADE_INTERNAL
+    0 - Build for public release
+    1 - Build for developer only
+
+HANDMADE_SLOW
+    0 - No slow code allowed
+    1 - Slow code welcome.
+*/
+
+#if HANDMADE_SLOW
+// TODO: Complete assertion macro
+#define Assert(Expression) if(!(Expression)) { *(int *)0 = 0; }
+#else
+#define Assert(Expression)
+#endif
+
+// TODO: Should these always use 64-bit?
+#define Kilobytes(Value) ((Value) * 1024LL)
+#define Megabytes(Value) (Kilobytes(Value) * 1024LL)
+#define Gigabytes(Value) (Megabytes(Value) * 1024LL)
+#define Terabytes(Value) (Gigabytes(Value) * 1024LL)
+
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+#define internal static
+#define local_persist static
+#define global_variable static
+
+#define Pi32 3.1415926535897932384626433832795028841971693993751f
+
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+typedef int32 bool32;
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef float real32;
+typedef double real64;
+
+/*
     TODO: Services that the game provides to the platform layer.
 */
 
@@ -66,13 +111,37 @@ struct game_controller_input
 
 struct game_input
 {
+    // TODO: Insert clock values here.
     game_controller_input Controllers[4];
 };
 
+struct game_memory
+{
+    bool32 IsInitialized;
+
+    uint64 PermanentStorageSize;
+    void *PermanentStorage; // NOTE: REQUIRED to be cleared to zero at startup.
+
+    uint64 TransientStorageSize;
+    void *TransientStorage; // NOTE: REQUIRED to be cleared to zero at startup.
+};
+
 internal void GameUpdateAndRender(
+    game_memory *Memory,
     game_input *Input,
     game_offscreen_buffer *Buffer,
     game_sound_output_buffer *SoundBuffer);
+
+//
+//
+//
+
+struct game_state
+{
+    int BlueOffset;
+    int GreenOffset;
+    int ToneHz;
+};
 
 #define HANDMADE_H
 #endif

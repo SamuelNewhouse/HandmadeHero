@@ -19,29 +19,7 @@
     Just a partial list of stuff!!
 */
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-
 #include <stdint.h>
-
-#define internal static
-#define local_persist static
-#define global_variable static
-
-#define Pi32 3.1415926535897932384626433832795028841971693993751f
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-typedef int32 bool32;
-
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef float real32;
-typedef double real64;
 
 // TODO: Implement sinf ourselves.
 #include <math.h>
@@ -509,8 +487,27 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
     Win32ClearBuffer(&SoundOutput);
     GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
     // TODO: Pool with bitmap alloc
-    int16 *Samples = (int16 *)VirtualAlloc(0, 48000 * 2 * sizeof(int16), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    //int16 *Samples = (int16 *)_alloca(48000 * 2 * sizeof(int16));
+    int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+#if HANDMADE_INTERNAL
+    LPVOID BaseAddress = (LPVOID)Terabytes(2);
+#else
+    LPVOID BaseAddress = 0;    
+#endif
+
+    game_memory GameMemory = {};
+    GameMemory.PermanentStorageSize = Megabytes(64);
+    GameMemory.TransientStorageSize = Gigabytes(4);
+
+    uint64 TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
+    GameMemory.PermanentStorage = VirtualAlloc(BaseAddress, TotalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);    
+    GameMemory.TransientStorage = ((uint8 *)GameMemory.PermanentStorage + GameMemory.PermanentStorageSize);
+
+    if(!Samples || !GameMemory.PermanentStorage || !GameMemory.TransientStorage)
+    {
+        // TODO: Logging
+        return 0;
+    }
 
     // NOTE: Performance tracking.
     LARGE_INTEGER PerfCounterFrequencyResult;
@@ -520,7 +517,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
     QueryPerformanceCounter(&LastCounter);
     uint64 LastCycleCount = __rdtsc();
 
-    game_input Input[2];
+    game_input Input[2] = {};
     game_input *NewInput = &Input[0];
     game_input *OldInput = &Input[1];
 
@@ -593,9 +590,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
                 NewController->MinY = OldController->MaxY = NewController->EndY = Y;
 
-                int16 StickX = Pad->sThumbLX;
-                int16 StickY = Pad->sThumbLY;
-
                 ProcessXInputDigitalButton(Pad->wButtons, &OldController->Down, XINPUT_GAMEPAD_A, &NewController->Down);
                 ProcessXInputDigitalButton(Pad->wButtons, &OldController->Right, XINPUT_GAMEPAD_B, &NewController->Right);
                 ProcessXInputDigitalButton(Pad->wButtons, &OldController->Left, XINPUT_GAMEPAD_X, &NewController->Left);
@@ -653,7 +647,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
         Buffer.Height = GlobalBackBuffer.Height;
         Buffer.Pitch =  GlobalBackBuffer.Pitch;
 
-        GameUpdateAndRender(Input, &Buffer, &SoundBuffer);
+        GameUpdateAndRender(&GameMemory, Input, &Buffer, &SoundBuffer);
         if(SoundIsValid)
         {
             Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite, &SoundBuffer);

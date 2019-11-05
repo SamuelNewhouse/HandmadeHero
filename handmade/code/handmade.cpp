@@ -19,7 +19,6 @@ internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int ToneHz)
     }
 }
 
-
 internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
 {
     // TODO: Let's see what the optimizer does.
@@ -45,20 +44,27 @@ internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset,
 }
 
 internal void GameUpdateAndRender(
+    game_memory *Memory,
     game_input* Input,
     game_offscreen_buffer *Buffer,
     game_sound_output_buffer *SoundBuffer)
 {
-    local_persist int BlueOffset = 0;
-    local_persist int GreenOffset = 0;
-    local_persist int ToneHz = 256;
+    Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
+
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+    if(!Memory->IsInitialized)
+    {
+        GameState->ToneHz = 256;
+        // TODO: This may be more appropiate to do in the platform layer.
+        Memory->IsInitialized = true;
+    }
 
     game_controller_input *Input0 = &Input->Controllers[0];
     if(Input0->IsAnalog)
     {
         // NOTE: Use analog movement tuning.
-        ToneHz = 256 + (int)(128.0f * Input0->EndY);
-        BlueOffset += (int)(4.0f * Input0->EndX);
+        GameState->ToneHz = 256 + (int)(128.0f * Input0->EndY);
+        GameState->BlueOffset += (int)(4.0f * Input0->EndX);
     }
     else
     {
@@ -69,11 +75,10 @@ internal void GameUpdateAndRender(
     // Input.AButtonHalfTransitionCount;
     if(Input0->Down.EndedDown)
     {
-        GreenOffset++;
+        GameState->GreenOffset++;
     }
 
-
     // TODO: Allow sample offsets here for more robust platform options.
-    GameOutputSound(SoundBuffer, ToneHz);
-    RenderWeirdGradient(Buffer, BlueOffset, GreenOffset);
+    GameOutputSound(SoundBuffer, GameState->ToneHz);
+    RenderWeirdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
 }
