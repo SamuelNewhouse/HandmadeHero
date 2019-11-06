@@ -63,6 +63,91 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub; // & op
 #define XInputGetState XInputGetState_
 #define XInputSetState XInputSetState_
 
+inline uint32 SafeTruncateUInt64(uint64 Value)
+{
+    // TODO: Defines for maximum value UInt32MAx
+    Assert(Value <= 0xFFFFFFFF);
+    return (uint32)Value;
+}
+
+internal debug_read_file_result DEBUG_PlatformReadEntireFile(char *FileName)
+{
+    debug_read_file_result Result = {};
+
+    HANDLE FileHandle = CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if(FileHandle != INVALID_HANDLE_VALUE)
+    {        
+        LARGE_INTEGER FileSize;
+        if(GetFileSizeEx(FileHandle, &FileSize))
+        {            
+            uint32 FileSize32 = SafeTruncateUInt64(FileSize.QuadPart);
+            Result.Contents = VirtualAlloc(0, FileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            if(Result.Contents)
+            {
+                DWORD BytesRead;
+                if(ReadFile(FileHandle, Result.Contents, FileSize32, &BytesRead, 0) && (FileSize32 == BytesRead))
+                {
+                    // NOTE: File read successfully
+                    Result.ContentSize = FileSize32;
+                }
+                else
+                {
+                    DEBUG_PlatformFreeFileMemory(Result.Contents);
+                    Result.Contents = 0;
+                }
+            }
+            else
+            {
+                // TODO: Logging
+            }
+        }
+        else
+        {
+            // TODO: Logging
+        }
+        CloseHandle(FileHandle);
+    }
+    else
+    {
+        // TODO: Logging
+    }
+
+    return Result;
+}
+internal bool32 DEBUG_PlatformWriteEntireFile(char *FileName, uint32 MemorySize, void *Memory)
+{
+    bool32 Result = false;
+
+    HANDLE FileHandle = CreateFileA(FileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+    if(FileHandle != INVALID_HANDLE_VALUE)
+    {        
+        DWORD BytesWritten;
+        if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
+        {
+            // NOTE: File read successfully
+            Result = (MemorySize == BytesWritten);
+        }
+        else
+        {
+        }
+        CloseHandle(FileHandle);
+    }
+    else
+    {
+        // TODO: Logging
+    }
+
+    return Result;
+}
+
+internal void DEBUG_PlatformFreeFileMemory(void *Memory)
+{
+    if(Memory)
+    {
+        VirtualFree(Memory, 0,  MEM_RELEASE);
+    }
+}
+
 internal void Win32LoadXInput(void)
 {
     // TODO: Test this on Windows 8.
@@ -664,8 +749,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
         real32 MSPerFrame = 1000.0f * (real32)CounterElapsed / (real32)PerfCounterFrequency;
         real32 FPS = (real32)PerfCounterFrequency / (real32)CounterElapsed;
         real32 MCPF = (real32)CyclesElapsed / (1000.0f * 1000.0f);
-
-        // TODO: wsprintFA should be replaced eventually.
+        
     #if 0
         char Buffer[256];
         sprintf(Buffer, "%.02f ms/f, %.02f f/s, %.02f Mc/f\n", MSPerFrame, FPS, MCPF);

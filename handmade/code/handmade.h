@@ -45,10 +45,24 @@ typedef uint64_t uint64;
 typedef float real32;
 typedef double real64;
 
-/*
-    TODO: Services that the game provides to the platform layer.
+/* ============================================================================
+    NOTE: Services that the game provides to the platform layer.
 */
+#if HANDMADE_INTERNAL
+/*  IMPORTANT:
+    This are NOT for doing anything in the shipping game - they are blocking and the write
+    doesn't protect against lost data!
+*/
+struct debug_read_file_result
+{
+    uint32 ContentSize;
+    void *Contents;
+};
+internal debug_read_file_result DEBUG_PlatformReadEntireFile(char *FileName);
+internal void DEBUG_PlatformFreeFileMemory(void *Memory);
 
+internal bool32 DEBUG_PlatformWriteEntireFile(char *FileName, uint32 MemorySize, void *Memory);
+#endif
 /*
     NOTE: Services that the game platform layer provides to the game.
     This may expand in the future - sound on seperate thread, etc.
