@@ -1,6 +1,8 @@
 @echo off
 
+REM TODO - can we just build both with one exe?
+
 IF NOT EXIST ..\..\build mkdir ..\..\build
 pushd ..\..\build
-cl -D HANDMADE_INTERNAL=1 -D HANDMADE_SLOW=1 -D HANDMADE_WIN32=1 -FC -Zi w:\handmade\code\win32_handmade.cpp user32.lib Gdi32.lib
+cl -MT -nologo -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -D HANDMADE_INTERNAL=1 -D HANDMADE_SLOW=1 -D HANDMADE_WIN32=1 -FC -Z7 -Fmwin32_handmade.map w:\handmade\code\win32_handmade.cpp /link -opt:ref -subsystem:windows,5.02 user32.lib Gdi32.lib
 popd

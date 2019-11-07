@@ -34,8 +34,8 @@ internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset,
                 In memory:		BB GG RR xx
 				In register:	xx RR GG BB (Windows has defined RGB to be in order in the register)
             */
-            uint8 Blue = (x + BlueOffset);
-            uint8 Green = (y + GreenOffset);
+            uint8 Blue = (uint8)(x + BlueOffset);
+            uint8 Green = (uint8)(y + GreenOffset);
 
             *Pixel++ = (Green << 8) | Blue;
         }
@@ -61,7 +61,7 @@ internal void GameUpdateAndRender(
             DEBUG_PlatformWriteEntireFile("test.out", File.ContentSize, File.Contents);
             DEBUG_PlatformFreeFileMemory(File.Contents);
         }
-        
+
 
         GameState->ToneHz = 256;
         // TODO: This may be more appropiate to do in the platform layer.
