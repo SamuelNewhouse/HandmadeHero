@@ -49,6 +49,11 @@ internal void GameUpdateAndRender(
     game_offscreen_buffer *Buffer,
     game_sound_output_buffer *SoundBuffer)
 {
+    Assert(
+        &Input->Controllers[0].Terminator -
+        &Input->Controllers[0].Buttons[0] ==
+        ArrayCount(Input->Controllers[0].Buttons)
+    );
     Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
 
     game_state *GameState = (game_state *)Memory->PermanentStorage;
@@ -62,29 +67,40 @@ internal void GameUpdateAndRender(
             DEBUG_PlatformFreeFileMemory(File.Contents);
         }
 
-
         GameState->ToneHz = 256;
         // TODO: This may be more appropiate to do in the platform layer.
         Memory->IsInitialized = true;
     }
 
-    game_controller_input *Input0 = &Input->Controllers[0];
-    if(Input0->IsAnalog)
+    for(int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ++ControllerIndex)
     {
-        // NOTE: Use analog movement tuning.
-        GameState->ToneHz = 256 + (int)(128.0f * Input0->EndY);
-        GameState->BlueOffset += (int)(4.0f * Input0->EndX);
-    }
-    else
-    {
-        // NOTE: Use digital movement tuning.
-    }
+        game_controller_input *Controller = GetController(Input, ControllerIndex);
+        if(Controller->IsAnalog)
+        {
+            // NOTE: Use analog movement tuning.
+            GameState->BlueOffset += (int)(4.0f * Controller->StickAverageX);
+            GameState->ToneHz = 256 + (int)(128.0f * Controller->StickAverageY);
+        }
+        else
+        {
+            // NOTE: Use digital movement tuning.
+            if(Controller->MoveLeft.EndedDown)
+            {
+                GameState->BlueOffset += 1;
+            }
+            if(Controller->MoveRight.EndedDown)
+            {
+                GameState->BlueOffset -= 1;
+            }
 
-    // Input.AButtonEndedDown;
-    // Input.AButtonHalfTransitionCount;
-    if(Input0->Down.EndedDown)
-    {
-        GameState->GreenOffset++;
+        }
+
+        // Input.AButtonEndedDown;
+        // Input.AButtonHalfTransitionCount;
+        if(Controller->ActionDown.EndedDown)
+        {
+            GameState->GreenOffset++;
+        }
     }
 
     // TODO: Allow sample offsets here for more robust platform options.
