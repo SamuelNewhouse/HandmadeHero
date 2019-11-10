@@ -1,5 +1,5 @@
 #if !defined(HANDMADE_H) // Include guard to avoid redeclaration
-
+#include <stdint.h>
 /*
 HANDMADE_INTERNAL
     0 - Build for public release
